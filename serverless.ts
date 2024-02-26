@@ -1,4 +1,5 @@
-import type { AWS } from '@serverless/typescript'
+import type { AWS } from '@serverless/typescript';
+import { TABLE_NAMES } from './src/support/constants';
 
 const serverlessConfiguration: AWS = {
   service: 'websocket-chat-handler',
@@ -15,7 +16,19 @@ const serverlessConfiguration: AWS = {
     },
     environment: {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
-      NODE_OPTIONS: '--enable-source-maps --stack-trace-limit=1000'
+      NODE_OPTIONS: '--enable-source-maps --stack-trace-limit=1000',
+      WSSAPIGATEWAYENDPOINT: {
+        'Fn::Join': [
+          '',
+          [
+            'wss://',
+            { Ref: 'WebsocketsApi' },
+            '.execute-api.',
+            { Ref: 'AWS::Region' },
+            '.amazonaws.com/${self:provider.stage}'
+          ]
+        ]
+      }
     },
     iam: {
       role: {
@@ -93,7 +106,7 @@ const serverlessConfiguration: AWS = {
       clients: {
         Type: 'AWS::DynamoDB::Table',
         Properties: {
-          TableName: 'Clients',
+          TableName: TABLE_NAMES.CLIENTS,
           AttributeDefinitions: [
             { AttributeName: 'connectionId', AttributeType: 'S' },
             { AttributeName: 'nickname', AttributeType: 'S' }
@@ -122,20 +135,39 @@ const serverlessConfiguration: AWS = {
           ]
         }
       },
-      stocks: {
+      messages: {
         Type: 'AWS::DynamoDB::Table',
         Properties: {
-          TableName: '${env:STOCKS_TABLE}',
+          TableName: TABLE_NAMES.MESSAGES,
           AttributeDefinitions: [
-            { AttributeName: 'product_id', AttributeType: 'S' }
+            { AttributeName: 'messagesId', AttributeType: 'S' },
+            { AttributeName: 'createdAt', AttributeType: 'N' },
+            { AttributeName: 'nicknameToNickname', AttributeType: 'S' }
           ],
           KeySchema: [
-            { AttributeName: 'product_id', KeyType: 'HASH' }
+            { AttributeName: 'messagesId', KeyType: 'HASH' },
+            { AttributeName: 'createdAt', KeyType: 'RANGE' }
           ],
           ProvisionedThroughput: {
             ReadCapacityUnits: 1,
             WriteCapacityUnits: 1
-          }
+          },
+          GlobalSecondaryIndexes: [
+            {
+              IndexName: 'NicknameToNicknameIndex',
+              KeySchema: [
+                { AttributeName: 'nicknameToNickname', KeyType: 'HASH' },
+                { AttributeName: 'createdAt', KeyType: 'RANGE' }
+              ],
+              Projection: {
+                ProjectionType: 'ALL'
+              },
+              ProvisionedThroughput: {
+                ReadCapacityUnits: 1,
+                WriteCapacityUnits: 1
+              }
+            }
+          ]
         }
       }
     }
@@ -153,6 +185,6 @@ const serverlessConfiguration: AWS = {
       concurrency: 10
     }
   }
-}
+};
 
-module.exports = serverlessConfiguration
+module.exports = serverlessConfiguration;

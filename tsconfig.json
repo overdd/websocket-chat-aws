@@ -8,7 +8,7 @@
       "sourceMap": true,
       "target": "ES2020",
       "outDir": "lib",
-      "strictNullChecks": true
+      "strictNullChecks": true,
     },
     "include": ["**/*.ts", "serverless.ts"],
     "exclude": [
