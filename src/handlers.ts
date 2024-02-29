@@ -1,5 +1,7 @@
 import { type APIGatewayProxyEventQueryStringParameters, type APIGatewayProxyEvent, type APIGatewayProxyResult } from 'aws-lambda';
-import { DynamoDB, ApiGatewayManagementApi, type AWSError } from 'aws-sdk';
+import { ApiGatewayManagementApi } from '@aws-sdk/client-apigatewaymanagementapi';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { PutCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { RESPONSES, TABLE_NAMES } from './support/constants';
 
 type Action = '$connect' | '$disconnect' | 'getMessages' | 'sendMessages' | 'getClients';
@@ -8,7 +10,7 @@ interface Client {
   nickname: string
 };
 
-const docClient = new DynamoDB.DocumentClient();
+const docClient = new DynamoDBClient();
 const apiGateway = new ApiGatewayManagementApi({
   endpoint: process.env.WSSAPIGATEWAYENDPOINT
 });
@@ -39,13 +41,15 @@ const handleConnect = async (connectionId: string, queryParams: APIGatewayProxyE
     };
   }
 
-  await docClient.put({
-    TableName: TABLE_NAMES.CLIENTS,
-    Item: {
-      connectionId,
-      nickname: queryParams.nickname
-    }
-  }).promise();
+  const command = new PutCommand(
+    {
+      TableName: TABLE_NAMES.CLIENTS,
+      Item: {
+        connectionId,
+        nickname: queryParams.nickname
+      }
+    });
+  await docClient.send(command);
 
   await notifyClients(connectionId);
 
@@ -53,12 +57,14 @@ const handleConnect = async (connectionId: string, queryParams: APIGatewayProxyE
 };
 
 const handleDisconnect = async (connectionId: string): Promise<APIGatewayProxyResult> => {
-  await docClient.delete({
+  const command = new DeleteCommand({
     TableName: TABLE_NAMES.CLIENTS,
     Key: {
       connectionId
     }
-  }).promise();
+  });
+
+  await docClient.send(command);
 
   await notifyClients(connectionId);
 
@@ -83,9 +89,11 @@ const notifyClients = async (connectionIdToExclude: string): Promise<void> => {
 };
 
 const getAllClients = async (): Promise<Client[]> => {
-  const output = await docClient.scan({
+  const command = new ScanCommand({
     TableName: TABLE_NAMES.CLIENTS
-  }).promise();
+  });
+
+  const output = await docClient.send(command);
 
   const clients = output.Items ?? [];
   return clients as Client[];
@@ -96,16 +104,17 @@ const postToConnection = async (connectionId: string, data: string): Promise<voi
     await apiGateway.postToConnection({
       ConnectionId: connectionId,
       Data: data
-    }).promise();
+    });
   } catch (error) {
-    if ((error as AWSError).statusCode !== 410) {
+    if ((error).statusCode !== 410) {
       throw error;
     }
-    await docClient.delete({
+    const command = new DeleteCommand({
       TableName: TABLE_NAMES.CLIENTS,
       Key: {
         connectionId
       }
-    }).promise();
+    });
+    await docClient.send(command);
   }
 };

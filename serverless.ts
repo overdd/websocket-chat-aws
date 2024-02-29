@@ -25,7 +25,7 @@ const serverlessConfiguration: AWS = {
             { Ref: 'WebsocketsApi' },
             '.execute-api.',
             { Ref: 'AWS::Region' },
-            '.amazonaws.com/${self:provider.stage}'
+            '.amazonaws.com/dev'
           ]
         ]
       }
@@ -43,6 +43,19 @@ const serverlessConfiguration: AWS = {
               'dynamodb:PutItem',
               'dynamodb:UpdateItem',
               'dynamodb:DeleteItem'
+            ],
+            Resource: [
+              'arn:aws:dynamodb:*'
+            ]
+          },
+          {
+            Effect: 'Allow',
+            Action: [
+              'execute-api:Invoke'
+            ],
+            Resource: [
+              'arn:aws:execute-api:*',
+              'arn:aws:lambda:*'
             ]
           }
         ]
@@ -51,11 +64,11 @@ const serverlessConfiguration: AWS = {
   },
   functions: {
     connectHandler: {
-      handler: 'src/handlers.handler',
+      handler: './src/handlers.handler',
       events: [
         {
           websocket: {
-            route: $connect as const
+            route: '$connect'
           }
         }
       ]
@@ -65,7 +78,7 @@ const serverlessConfiguration: AWS = {
       events: [
         {
           websocket: {
-            route: $disconnect as const
+            route: '$disconnect'
           }
         }
       ]
@@ -75,7 +88,7 @@ const serverlessConfiguration: AWS = {
       events: [
         {
           websocket: {
-            route: getMessages
+            route: 'getMessages'
           }
         }
       ]
@@ -85,7 +98,7 @@ const serverlessConfiguration: AWS = {
       events: [
         {
           websocket: {
-            route: sendMessages
+            route: 'sendMessages'
           }
         }
       ]
@@ -95,7 +108,7 @@ const serverlessConfiguration: AWS = {
       events: [
         {
           websocket: {
-            route: getClients
+            route: 'getClients'
           }
         }
       ]
