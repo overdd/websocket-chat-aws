@@ -1,8 +1,9 @@
 import { type APIGatewayProxyEventQueryStringParameters, type APIGatewayProxyEvent, type APIGatewayProxyResult } from 'aws-lambda';
 import { ApiGatewayManagementApi } from '@aws-sdk/client-apigatewaymanagementapi';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { PutCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { RESPONSES, TABLE_NAMES } from './support/constants';
+import { unmarshall } from '@aws-sdk/util-dynamodb';
 
 type Action = '$connect' | '$disconnect' | 'getMessages' | 'sendMessages' | 'getClients';
 interface Client {
@@ -37,9 +38,26 @@ module.exports.handler = async (event: APIGatewayProxyEvent): Promise<APIGateway
 
 const handleConnect = async (connectionId: string, queryParams: APIGatewayProxyEventQueryStringParameters | null): Promise<APIGatewayProxyResult> => {
   if (queryParams?.nickname === null || queryParams?.nickname === undefined) {
-    return {
-      statusCode: 403,
-      body: ''
+    return RESPONSES.FORBIDDEN;
+  }
+
+  const query = new QueryCommand({
+    TableName: TABLE_NAMES.CLIENTS,
+    IndexName: 'NicknameIndex',
+    KeyConditionExpression: '#nickname = :nickname',
+    ExpressionAttributeNames: {
+      '#nickname': 'nickname'
+    },
+    ExpressionAttributeValues: {
+      ':nickname': { S: queryParams.nickname}
+    }
+  });
+  const dbOutput = await docClient.send(query);
+
+  if (dbOutput.Count && dbOutput.Count > 0) {
+    const client = unmarshall(dbOutput.Items![0]) as Client;
+    if (await postToConnection(client.connectionId, JSON.stringify({ type: 'ping' }))) {
+      return RESPONSES.FORBIDDEN;
     };
   }
 
@@ -96,16 +114,26 @@ const getAllClients = async (): Promise<Client[]> => {
   return clients as Client[];
 };
 
-const postToConnection = async (connectionId: string, data: string): Promise<void> => {
+const postToConnection = async (connectionId: string, data: string): Promise<boolean> => {
   try {
     const command = ({
       ConnectionId: connectionId,
       Data: Buffer.from(data)
     });
     await apiGateway.postToConnection(command);
+    return true;
   } catch (error) {
     if ((error).$metadata.httpStatusCode !== 410) {
       throw error;
     }
   }
+
+  const command = new DeleteCommand({
+    TableName: TABLE_NAMES.CLIENTS,
+    Key: {
+      connectionId
+    }
+  });
+  await docClient.send(command);
+  return false;
 };
