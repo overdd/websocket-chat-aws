@@ -12,7 +12,9 @@ interface Client {
 
 const docClient = new DynamoDBClient();
 const apiGateway = new ApiGatewayManagementApi({
-  endpoint: process.env.WSSAPIGATEWAYENDPOINT
+  apiVersion: "2018-11-29",
+  endpoint: process.env.WSSAPIGATEWAYENDPOINT,
+  region: 'us-east-1'
 });
 module.exports.handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const connectionId = event.requestContext.connectionId ?? 'defaultConnectionId';
@@ -49,10 +51,9 @@ const handleConnect = async (connectionId: string, queryParams: APIGatewayProxyE
         nickname: queryParams.nickname
       }
     });
+
   await docClient.send(command);
-
   await notifyClients(connectionId);
-
   return RESPONSES.OK;
 };
 
@@ -65,9 +66,7 @@ const handleDisconnect = async (connectionId: string): Promise<APIGatewayProxyRe
   });
 
   await docClient.send(command);
-
-  await notifyClients(connectionId);
-
+  // await notifyClients(connectionId);
   return RESPONSES.OK;
 };
 
@@ -101,20 +100,14 @@ const getAllClients = async (): Promise<Client[]> => {
 
 const postToConnection = async (connectionId: string, data: string): Promise<void> => {
   try {
-    await apiGateway.postToConnection({
+    const command = ({
       ConnectionId: connectionId,
-      Data: data
-    });
+      Data: Buffer.from(data)
+  })
+    await apiGateway.postToConnection(command);
   } catch (error) {
-    if ((error).statusCode !== 410) {
+    if ((error).$metadata.httpStatusCode !== 410) {
       throw error;
     }
-    const command = new DeleteCommand({
-      TableName: TABLE_NAMES.CLIENTS,
-      Key: {
-        connectionId
-      }
-    });
-    await docClient.send(command);
-  }
+  } 
 };

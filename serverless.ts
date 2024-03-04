@@ -21,7 +21,7 @@ const serverlessConfiguration: AWS = {
         'Fn::Join': [
           '',
           [
-            'wss://',
+            'https://', //this is a sdk-v3 requirement
             { Ref: 'WebsocketsApi' },
             '.execute-api.',
             { Ref: 'AWS::Region' },
@@ -51,11 +51,10 @@ const serverlessConfiguration: AWS = {
           {
             Effect: 'Allow',
             Action: [
-              'execute-api:Invoke'
+              'execute-api:*'
             ],
             Resource: [
-              'arn:aws:execute-api:*',
-              'arn:aws:lambda:*'
+              'arn:aws:execute-api:*'
             ]
           }
         ]
