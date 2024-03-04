@@ -21,7 +21,7 @@ const serverlessConfiguration: AWS = {
         'Fn::Join': [
           '',
           [
-            'https://', //this is a sdk-v3 requirement
+            'https://', // this is a sdk-v3 requirement
             { Ref: 'WebsocketsApi' },
             '.execute-api.',
             { Ref: 'AWS::Region' },

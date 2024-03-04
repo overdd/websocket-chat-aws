@@ -12,7 +12,7 @@ interface Client {
 
 const docClient = new DynamoDBClient();
 const apiGateway = new ApiGatewayManagementApi({
-  apiVersion: "2018-11-29",
+  apiVersion: '2018-11-29',
   endpoint: process.env.WSSAPIGATEWAYENDPOINT,
   region: 'us-east-1'
 });
@@ -51,7 +51,6 @@ const handleConnect = async (connectionId: string, queryParams: APIGatewayProxyE
         nickname: queryParams.nickname
       }
     });
-
   await docClient.send(command);
   await notifyClients(connectionId);
   return RESPONSES.OK;
@@ -64,9 +63,8 @@ const handleDisconnect = async (connectionId: string): Promise<APIGatewayProxyRe
       connectionId
     }
   });
-
   await docClient.send(command);
-  // await notifyClients(connectionId);
+  await notifyClients(connectionId);
   return RESPONSES.OK;
 };
 
@@ -103,11 +101,11 @@ const postToConnection = async (connectionId: string, data: string): Promise<voi
     const command = ({
       ConnectionId: connectionId,
       Data: Buffer.from(data)
-  })
+    });
     await apiGateway.postToConnection(command);
   } catch (error) {
     if ((error).$metadata.httpStatusCode !== 410) {
       throw error;
     }
-  } 
+  }
 };
