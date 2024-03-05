@@ -2,7 +2,7 @@ import { type APIGatewayProxyEventQueryStringParameters, type APIGatewayProxyEve
 import { ApiGatewayManagementApi } from '@aws-sdk/client-apigatewaymanagementapi';
 import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
 import { PutCommand, DeleteCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
-import { RESPONSES, TABLE_NAMES } from './support/constants';
+import { MESSAGES, RESPONSES, TABLE_NAMES } from './support/constants';
 import { unmarshall } from '@aws-sdk/util-dynamodb';
 
 type Action = '$connect' | '$disconnect' | 'getMessages' | 'sendMessages' | 'getClients';
@@ -49,16 +49,19 @@ const handleConnect = async (connectionId: string, queryParams: APIGatewayProxyE
       '#nickname': 'nickname'
     },
     ExpressionAttributeValues: {
-      ':nickname': { S: queryParams.nickname}
+      ':nickname': { S: queryParams.nickname }
     }
   });
-  const dbOutput = await docClient.send(query);
+  const queryResult = await docClient.send(query);
 
-  if (dbOutput.Count && dbOutput.Count > 0) {
-    const client = unmarshall(dbOutput.Items![0]) as Client;
-    if (await postToConnection(client.connectionId, JSON.stringify({ type: 'ping' }))) {
-      return RESPONSES.FORBIDDEN;
-    };
+  if (queryResult.Count !== null && queryResult.Count !== undefined && queryResult.Count > 0) {
+    const firstItem = queryResult.Items?.[0];
+    if (firstItem !== null && firstItem !== undefined) {
+      const client = unmarshall(firstItem) as Client;
+      if (await postToConnection(client.connectionId, JSON.stringify(MESSAGES.PING))) {
+        return RESPONSES.FORBIDDEN;
+      };
+    }
   }
 
   const command = new PutCommand(

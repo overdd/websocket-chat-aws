@@ -13,3 +13,7 @@ export const TABLE_NAMES = {
   CLIENTS: 'Clients',
   MESSAGES: 'Messages'
 };
+
+export const MESSAGES = {
+  PING: { type: 'ping' }
+};
