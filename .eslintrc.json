@@ -10,6 +10,7 @@
         "ecmaVersion": "latest",
         "sourceType": "module"
     },
+    "ignorePatterns": ["coverage/**/*"],
     "rules": {
         "@typescript-eslint/semi": ["error", "always"]
     }

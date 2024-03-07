@@ -5,10 +5,10 @@ import { type Action } from './support/types';
 import { parseGetMessagesBody, parseSendMessageBody } from './support/parsers';
 import { handleConnect } from './handlers/handleConnect';
 import { handleDisconnect } from './handlers/handleDisconnect';
-import { postToConnection } from './services/apiGateway.service';
 import { handleGetClients } from './handlers/handleGetClients';
 import { handleGetMessages } from './handlers/handleGetMessages';
 import { handleSendMessages } from './handlers/handleSendMessages';
+import apiGatewayService from './services/apiGateway.service';
 
 module.exports.handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const connectionId = event.requestContext.connectionId ?? 'defaultConnectionId';
@@ -33,7 +33,7 @@ module.exports.handler = async (event: APIGatewayProxyEvent): Promise<APIGateway
     }
   } catch (error) {
     if (error instanceof HandleError) {
-      await postToConnection(connectionId, JSON.stringify({ type: 'error', value: error.message }));
+      await apiGatewayService.postToConnection(connectionId, JSON.stringify({ type: 'error', value: error.message }));
       return RESPONSES.OK;
     }
     throw error;

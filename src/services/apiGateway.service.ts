@@ -1,43 +1,42 @@
 import { ApiGatewayManagementApi } from '@aws-sdk/client-apigatewaymanagementapi';
-import { dynamoDBClient, getAllClients } from './dynamoDb.service';
-import { DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import { TABLE_NAMES } from '../support/constants';
+import dynamoDBService from './dynamoDb.service';
 
-export const apiGateway = new ApiGatewayManagementApi({
-  apiVersion: '2018-11-29',
-  endpoint: process.env.WSSAPIGATEWAYENDPOINT
-});
+class ApiGatewayService {
+  private readonly apiGateway: ApiGatewayManagementApi;
 
-export const postToConnection = async (connectionId: string, data: string): Promise<boolean> => {
-  try {
-    const command = ({
-      ConnectionId: connectionId,
-      Data: Buffer.from(data)
+  constructor () {
+    this.apiGateway = new ApiGatewayManagementApi({
+      apiVersion: '2018-11-29',
+      endpoint: process.env.WSSAPIGATEWAYENDPOINT
     });
-    await apiGateway.postToConnection(command);
-    return true;
-  } catch (error) {
-    if ((error).$metadata.httpStatusCode !== 410) {
-      throw error;
-    }
   }
 
-  const command = new DeleteCommand({
-    TableName: TABLE_NAMES.CLIENTS,
-    Key: {
-      connectionId
+  async postToConnection (connectionId: string, data: string): Promise<boolean> {
+    try {
+      const command = ({
+        ConnectionId: connectionId,
+        Data: Buffer.from(data)
+      });
+      await this.apiGateway.postToConnection(command);
+      return true;
+    } catch (error) {
+      if ((error).$metadata.httpStatusCode !== 410) {
+        throw error;
+      }
     }
-  });
-  await dynamoDBClient.send(command);
-  return false;
+    await dynamoDBService.deleteConnection(connectionId);
+    return false;
+  };
+
+  async notifyClients (connectionIdToExclude: string): Promise<void> {
+    const clients = await dynamoDBService.getAllClients();
+    console.log(clients);
+    console.log(JSON.stringify(clients));
+    await Promise.all(clients.filter((client) => client.connectionId !== connectionIdToExclude).map(async (client) => {
+      await this.postToConnection(client.connectionId, JSON.stringify(clients));
+    })
+    );
+  };
 };
 
-export const notifyClients = async (connectionIdToExclude: string): Promise<void> => {
-  const clients = await getAllClients();
-  console.log(clients);
-  console.log(JSON.stringify(clients))
-  await Promise.all(clients.filter((client) => client.connectionId !== connectionIdToExclude).map(async (client) => {
-    await postToConnection(client.connectionId, JSON.stringify(clients));
-  })
-  );
-};
+export default new ApiGatewayService();
