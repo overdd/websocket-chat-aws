@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+      "lib": ["ESNext"],
+      "moduleResolution": "node",
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "removeComments": true,
+      "sourceMap": true,
+      "target": "ES2020",
+      "outDir": "lib",
+      "strictNullChecks": true,
+    },
+    "include": ["**/*.ts", "serverless.ts"],
+    "exclude": [
+      "node_modules/**/*",
+      ".serverless/**/*",
+      ".webpack/**/*",
+      "_warmup/**/*",
+      ".vscode/**/*",
+      "coverage/**/*",
+    ],
+    "ts-node": {
+      "require": ["tsconfig-paths/register"]
+    },
+    "esModuleInterop": true
+  }
