@@ -14,7 +14,7 @@ export const handleSendMessages = async (senderConnectionId: string, body: SendM
   const nicknameToNickname = getNicknameToNickname([senderClient.nickname, body.recepientNickname]);
   await dynamoDbService.addMessage(senderClient, nicknameToNickname, body);
 
-  // send message
+  // save message
   const recipientConnectionId = await dynamoDbService.getConnectionIdByNickname(body.recepientNickname);
 
   if (recipientConnectionId !== null && recipientConnectionId !== undefined) {

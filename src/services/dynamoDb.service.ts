@@ -7,7 +7,7 @@ import { getNicknameToNickname } from '../support/helpers';
 import { randomUUID } from 'node:crypto';
 
 class DynamoDBService {
-  private readonly dynamoDBClient: DynamoDBClient;
+  dynamoDBClient: DynamoDBClient;
 
   constructor () {
     this.dynamoDBClient = new DynamoDBClient();
